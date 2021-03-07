@@ -85,31 +85,27 @@ sh = do
   SIO.hSetBuffering SIO.stdin SIO.NoBuffering
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
   putText "> "
-  line <- getLine
-  case fmap toString $ words line of
+  line   <- getLine
+  result <- CES.tryAny $ case fmap toString $ words line of
     ["exit"] -> exitSuccess
     ["cd"  ] -> do
       homeDir <- SD.getHomeDirectory
       SD.setCurrentDirectory homeDir
-    ["cd", d] -> do
-      result <- CES.tryAny $ SD.setCurrentDirectory d
-      case result of
-        Right () -> pure ()
-        Left  e  -> do
-          putStrLn $ displayException e
-          putStr "err"
+    ["cd", d]         -> SD.setCurrentDirectory d
     (progName : args) -> do
       eitherExceptionOrExitCode <-
-        CES.tryAny
-        $ SP.withCreateProcess (SP.proc progName args) { SP.delegate_ctlc = True
-                                                       }
-        $ \_ _ _ p -> SP.waitForProcess p
+        SP.withCreateProcess (SP.proc progName args) { SP.delegate_ctlc = True }
+          $ \_ _ _ p -> SP.waitForProcess p
       case eitherExceptionOrExitCode of
-        Right SE.ExitSuccess     -> return ()
-        Right (SE.ExitFailure r) -> putText $ show r
-        Left  e                  -> do
-          putStrLn $ displayException e
-          putText "err"
+        SE.ExitSuccess   -> return ()
+        SE.ExitFailure r -> putText $ show r
     [] -> pure ()
 
+  case result of
+    Right () -> pure ()
+    Left  e  -> case fromException e of
+      Just SE.ExitSuccess -> exitSuccess
+      _                   -> do
+        putStrLn $ displayException e
+        putStr "err"
   sh
