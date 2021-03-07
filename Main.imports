@@ -1,0 +1,20 @@
+import Data.List as List ( length )
+import Data.Text as T ( Text, length, lines, unlines, unwords )
+import Data.Text.IO as TIO
+    ( getLine, hGetContents, putStr, putStrLn )
+import Relude
+    ( ($),
+      Functor(fmap),
+      Applicative(pure),
+      IO,
+      (.),
+      withFile,
+      IOMode(ReadMode),
+      forever,
+      exitFailure,
+      exitSuccess,
+      show,
+      ToString(toString),
+      ToText(toText) )
+import System.Environment ( getArgs, getProgName )
+import Lib ()
