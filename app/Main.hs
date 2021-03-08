@@ -31,7 +31,7 @@ main = do
 mainWithArgs :: Text -> [Text] -> IO ()
 mainWithArgs progName args = case (progName, args) of
   ("cat"    , _                ) -> cat args
-  ("echo"   , ("-n" : args')   ) -> putText . unwords $ args'
+  ("echo"   , "-n" : args'   ) -> putText . unwords $ args'
   ("echo"   , _                ) -> putTextLn . unwords $ args
   ("false"  , _                ) -> exitFailure
   ("sh"     , []               ) -> sh
@@ -47,9 +47,9 @@ mainWithArgs progName args = case (progName, args) of
     putTextLn
       $ unlines [unwords ["progName", progName], unwords $ "args" : args]
     exitFailure
-
-printHelp :: IO ()
-printHelp = putTextLn "hbb-exe false|true|yes|..."
+  where
+    printHelp :: IO ()
+    printHelp = putTextLn "hbb-exe false|true|yes|..."
 
 yes :: [Text] -> IO ()
 yes args =
@@ -63,8 +63,6 @@ wcC file = do
   withFile (toString file) ReadMode $ \h -> do
     contents <- TIO.hGetContents h
     putTextLn $ show $ T.length contents
-    --let len = length contents in putTextLn $ toText len
-    pure ()
 
 wcL :: Text -> IO ()
 wcL file = do
@@ -73,7 +71,7 @@ wcL file = do
     putTextLn $ show . length $ lines contents
 
 cat :: [Text] -> IO ()
-cat []       = pure ()
+cat []       = pass
 cat (f : fs) = do
   withFile
     (toString f)
@@ -91,7 +89,7 @@ sh = do
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
   putText "> "
   line   <- getLine
-  result <- CES.tryAny $ case fmap toString $ words line of
+  result <- CES.tryAny $ case toString <$> words line of
     ["exit"] -> exitSuccess
     ["cd"  ] -> do
       homeDir <- SD.getHomeDirectory
@@ -105,12 +103,12 @@ sh = do
         SP.withCreateProcess (SP.proc progName args) { SP.delegate_ctlc = True }
           $ \_ _ _ p -> SP.waitForProcess p
       case eitherExceptionOrExitCode of
-        SE.ExitSuccess   -> return ()
+        SE.ExitSuccess   -> pass
         SE.ExitFailure r -> putText $ show r
-    [] -> pure ()
+    [] -> pass
 
   case result of
-    Right () -> pure ()
+    Right () -> pass
     Left  e  -> case fromException e of
       Just SE.ExitSuccess -> exitSuccess
       _                   -> do
