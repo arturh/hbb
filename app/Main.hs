@@ -1,6 +1,8 @@
-{-# LANGUAGE NoImplicitPrelude   #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 
 module Main where
 
@@ -9,13 +11,16 @@ import qualified Data.Text              as T
 import qualified Data.Text.IO           as TIO
 import           Relude
 import qualified System.Directory       as SD
-import           System.Environment     (getArgs, getProgName)
+import           System.Environment     (getArgs, getProgName, setEnv, unsetEnv)
 import qualified System.Exit            as SE
 import qualified System.IO              as SIO
 import qualified System.IO.Error        as SIOE
 import qualified System.Process         as SP
 
 import           Lib
+
+
+default (Text)
 
 main :: IO ()
 main = do
@@ -91,7 +96,10 @@ sh = do
     ["cd"  ] -> do
       homeDir <- SD.getHomeDirectory
       SD.setCurrentDirectory homeDir
-    ["cd", d]         -> SD.setCurrentDirectory d
+    ["cd"   , d              ] -> SD.setCurrentDirectory d
+    ["unset", name           ] -> unsetEnv name
+    ["set"  , nameEqualsValue] -> do
+      let [name, value] = split '=' nameEqualsValue in setEnv name value
     (progName : args) -> do
       eitherExceptionOrExitCode <-
         SP.withCreateProcess (SP.proc progName args) { SP.delegate_ctlc = True }
@@ -109,3 +117,9 @@ sh = do
         putStrLn $ displayException e
         putStr "err"
   sh
+
+split :: Char -> String -> [String]
+split c s = case rest of
+  []       -> [chunk]
+  _ : rest -> chunk : split c rest
+  where (chunk, rest) = break (== c) s
