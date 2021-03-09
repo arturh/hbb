@@ -1,8 +1,5 @@
-{-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE NoImplicitPrelude    #-}
 {-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
 
 module Hbb where
 
@@ -15,8 +12,6 @@ import qualified System.Exit            as SE
 import qualified System.IO              as SIO
 import qualified System.IO.Error        as SIOE
 import qualified System.Process         as SP
-
-default (Text)
 
 mainWithArgs :: Text -> [Text] -> IO ()
 mainWithArgs progName args = case (progName, args) of
