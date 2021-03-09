@@ -10,7 +10,6 @@ import           XRelude
 import qualified System.Directory       as SD
 import qualified System.Exit            as SE
 import qualified System.IO              as SIO
-import qualified System.IO.Error        as SIOE
 import qualified System.Process         as SP
 
 mainWithArgs :: Text -> [Text] -> IO ()
@@ -66,7 +65,7 @@ cat files = forM_ files $ \f -> do
     )
 
 sh :: IO ()
-sh = do
+sh = forever $ do
   SIO.hSetBuffering SIO.stderr SIO.NoBuffering
   SIO.hSetBuffering SIO.stdin  SIO.NoBuffering
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
@@ -98,4 +97,3 @@ sh = do
       _                   -> do
         putStrLn $ displayException e
         putStr "err"
-  sh
