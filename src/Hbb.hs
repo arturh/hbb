@@ -20,19 +20,19 @@ default (Text)
 
 mainWithArgs :: Text -> [Text] -> IO ()
 mainWithArgs progName args = case (progName, args) of
-  ("cat"    , _                ) -> cat args
-  ("echo"   , "-n" : args'     ) -> putText . unwords $ args'
-  ("echo"   , _                ) -> putTextLn . unwords $ args
-  ("false"  , _                ) -> exitFailure
-  ("sh"     , []               ) -> sh
-  ("true"   , _                ) -> exitSuccess
-  ("wc"     , ["-c", file]     ) -> wcC file
-  ("wc"     , ["-l", file]     ) -> wcL file
-  ("yes"    , _                ) -> yes args
-  ("hbb-exe", ["-h"]           ) -> printHelp
-  ("hbb-exe", ["--help"]       ) -> printHelp
-  ("hbb-exe", progName' : args') -> mainWithArgs progName' args'
-  _                              -> do
+  ("cat"    , _              ) -> cat args
+  ("echo"   , "-n":args'     ) -> putText . unwords $ args'
+  ("echo"   , _              ) -> putTextLn . unwords $ args
+  ("false"  , _              ) -> exitFailure
+  ("sh"     , []             ) -> sh
+  ("true"   , _              ) -> exitSuccess
+  ("wc"     , ["-c", file]   ) -> wcC file
+  ("wc"     , ["-l", file]   ) -> wcL file
+  ("yes"    , _              ) -> yes args
+  ("hbb-exe", ["-h"]         ) -> printHelp
+  ("hbb-exe", ["--help"]     ) -> printHelp
+  ("hbb-exe", progName':args') -> mainWithArgs progName' args'
+  _                            -> do
     printHelp
     putTextLn
       $ unlines [unwords ["progName", progName], unwords $ "args" : args]
@@ -61,21 +61,19 @@ wcL file = do
     putTextLn $ show . length $ lines contents
 
 cat :: [Text] -> IO ()
-cat []       = pass
-cat (f : fs) = do
+cat files = forM_ files $ \f -> do
   withFile
     (toString f)
     ReadMode
-    (\h -> do
+    ( \h -> do
       contents <- TIO.hGetContents h
       putText contents
     )
-  cat fs
 
 sh :: IO ()
 sh = do
   SIO.hSetBuffering SIO.stderr SIO.NoBuffering
-  SIO.hSetBuffering SIO.stdin SIO.NoBuffering
+  SIO.hSetBuffering SIO.stdin  SIO.NoBuffering
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
   putText "> "
   line   <- getLine
@@ -88,9 +86,8 @@ sh = do
     ["unset", name           ] -> unsetEnv name
     ["set"  , nameEqualsValue] -> do
       setEnv name value
-        where
-          [name, value] = T.split (== '=') nameEqualsValue
-    (progName : args) -> do
+      where [name, value] = T.split (== '=') nameEqualsValue
+    (progName:args) -> do
       eitherExceptionOrExitCode <-
         SP.withCreateProcess (proc progName args) { SP.delegate_ctlc = True }
           $ \_ _ _ p -> SP.waitForProcess p
