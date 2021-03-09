@@ -6,12 +6,11 @@
 
 module Main where
 
-import           Lib
-import           Relude
-import           System.Environment (getArgs, getProgName, setEnv, unsetEnv)
+import           Hbb
+import           XRelude
 
 main :: IO ()
 main = do
-  progName <- fmap toText getProgName
-  args     <- fmap (fmap toText) getArgs
+  progName <- getProgName
+  args     <- getArgs
   mainWithArgs progName args

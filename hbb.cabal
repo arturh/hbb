@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: aff04312f42bdc02149dfbb2337812e1d1e0b570577c6425db153cddc92543c5
+-- hash: dada3eb0c3b74d63f3860913ef8673dfa198299bd06754979bf99f174b6f8ee3
 
 name:           hbb
 version:        0.1.0.0
@@ -27,7 +27,8 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Hbb
+      XRelude
   other-modules:
       Paths_hbb
   hs-source-dirs:

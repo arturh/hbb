@@ -4,14 +4,13 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 
-module Lib where
+module Hbb where
 
 import qualified Control.Exception.Safe as CES
 import qualified Data.Text              as T
 import qualified Data.Text.IO           as TIO
-import           Relude
+import           XRelude
 import qualified System.Directory       as SD
-import           System.Environment     (getArgs, getProgName, setEnv, unsetEnv)
 import qualified System.Exit            as SE
 import qualified System.IO              as SIO
 import qualified System.IO.Error        as SIOE
@@ -73,25 +72,27 @@ cat (f : fs) = do
     )
   cat fs
 
-
+sh :: IO ()
 sh = do
   SIO.hSetBuffering SIO.stderr SIO.NoBuffering
   SIO.hSetBuffering SIO.stdin SIO.NoBuffering
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
   putText "> "
   line   <- getLine
-  result <- CES.tryAny $ case toString <$> words line of
+  result <- CES.tryAny $ case T.words line of
     ["exit"] -> exitSuccess
     ["cd"  ] -> do
       homeDir <- SD.getHomeDirectory
       SD.setCurrentDirectory homeDir
-    ["cd"   , d              ] -> SD.setCurrentDirectory d
+    ["cd"   , d              ] -> setCurrentDirectory d
     ["unset", name           ] -> unsetEnv name
     ["set"  , nameEqualsValue] -> do
-      let [name, value] = split '=' nameEqualsValue in setEnv name value
+      setEnv name value
+        where
+          [name, value] = T.split (== '=') nameEqualsValue
     (progName : args) -> do
       eitherExceptionOrExitCode <-
-        SP.withCreateProcess (SP.proc progName args) { SP.delegate_ctlc = True }
+        SP.withCreateProcess (proc progName args) { SP.delegate_ctlc = True }
           $ \_ _ _ p -> SP.waitForProcess p
       case eitherExceptionOrExitCode of
         SE.ExitSuccess   -> pass
@@ -106,9 +107,3 @@ sh = do
         putStrLn $ displayException e
         putStr "err"
   sh
-
-split :: Char -> String -> [String]
-split c s = case rest of
-  []       -> [chunk]
-  _ : rest -> chunk : split c rest
-  where (chunk, rest) = break (== c) s
