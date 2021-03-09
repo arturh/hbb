@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 
-module HBB where
+module Hbb where
 
 import qualified Control.Exception.Safe as CES
 import           Control.Monad          ((>=>))
