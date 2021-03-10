@@ -4,65 +4,31 @@
 module Hbb where
 
 import qualified Control.Exception.Safe as CES
+import           Control.Monad          ((>=>))
 import qualified Data.Text              as T
 import qualified Data.Text.IO           as TIO
-import           XRelude
+import           Relude
 import qualified System.Directory       as SD
+import           System.Environment     (setEnv, unsetEnv)
 import qualified System.Exit            as SE
 import qualified System.IO              as SIO
 import qualified System.Process         as SP
 
-mainWithArgs :: Text -> [Text] -> IO ()
-mainWithArgs progName args = case (progName, args) of
-  ("cat"    , _              ) -> cat args
-  ("echo"   , "-n":args'     ) -> putText . unwords $ args'
-  ("echo"   , _              ) -> putTextLn . unwords $ args
-  ("false"  , _              ) -> exitFailure
-  ("sh"     , []             ) -> sh
-  ("true"   , _              ) -> exitSuccess
-  ("wc"     , ["-c", file]   ) -> wcC file
-  ("wc"     , ["-l", file]   ) -> wcL file
-  ("yes"    , _              ) -> yes args
-  ("hbb-exe", ["-h"]         ) -> printHelp
-  ("hbb-exe", ["--help"]     ) -> printHelp
-  ("hbb-exe", progName':args') -> mainWithArgs progName' args'
-  _                            -> do
-    printHelp
-    putTextLn
-      $ unlines [unwords ["progName", progName], unwords $ "args" : args]
-    exitFailure
- where
-  printHelp :: IO ()
-  printHelp = putTextLn "hbb-exe false|true|yes|..."
 
-yes :: [Text] -> IO ()
-yes args =
-  let theString = case args of
-        [] -> "y"
-        _  -> unwords args
-  in  forever $ putTextLn theString
+yes :: Text -> IO ()
+yes = forever . putTextLn
 
-wcC :: Text -> IO ()
-wcC file = do
-  withFile (toString file) ReadMode $ \h -> do
-    contents <- TIO.hGetContents h
-    putTextLn $ show $ T.length contents
+readingFile :: (Text -> IO a) -> FilePath -> IO a
+readingFile fun file = withFile file ReadMode $ TIO.hGetContents >=> fun
 
-wcL :: Text -> IO ()
-wcL file = do
-  withFile (toString file) ReadMode $ \h -> do
-    contents <- TIO.hGetContents h
-    putTextLn $ show . length $ lines contents
+wcC :: FilePath -> IO ()
+wcC = readingFile $ putTextLn . show . T.length
 
-cat :: [Text] -> IO ()
-cat files = forM_ files $ \f -> do
-  withFile
-    (toString f)
-    ReadMode
-    ( \h -> do
-      contents <- TIO.hGetContents h
-      putText contents
-    )
+wcL :: FilePath -> IO ()
+wcL = readingFile $ putTextLn . show . length . lines
+
+cat :: FilePath -> IO ()
+cat = readingFile putText
 
 sh :: IO ()
 sh = forever $ do
@@ -70,30 +36,20 @@ sh = forever $ do
   SIO.hSetBuffering SIO.stdin  SIO.NoBuffering
   SIO.hSetBuffering SIO.stdout SIO.NoBuffering
   putText "> "
-  line   <- getLine
-  result <- CES.tryAny $ case T.words line of
-    ["exit"] -> exitSuccess
-    ["cd"  ] -> do
-      homeDir <- SD.getHomeDirectory
-      SD.setCurrentDirectory homeDir
-    ["cd"   , d              ] -> setCurrentDirectory d
-    ["unset", name           ] -> unsetEnv name
-    ["set"  , nameEqualsValue] -> do
-      setEnv name value
-      where [name, value] = T.split (== '=') nameEqualsValue
-    (progName:args) -> do
-      eitherExceptionOrExitCode <-
-        SP.withCreateProcess (proc progName args) { SP.delegate_ctlc = True }
-          $ \_ _ _ p -> SP.waitForProcess p
-      case eitherExceptionOrExitCode of
-        SE.ExitSuccess   -> pass
-        SE.ExitFailure r -> putText $ show r
-    [] -> pass
+  CES.catch (getLine >>= handleSucces) handleError
+    where
+      handleSucces line = case words line of
+        ["exit" ] -> exitSuccess
+        ["cd"   ] -> SD.getHomeDirectory >>= SD.setCurrentDirectory
+        ["cd", d] -> SD.setCurrentDirectory $ toString d
+        ["unset", name           ] -> unsetEnv $ toString name
+        ["set"  , nameEqualsValue] -> case T.split ('=' ==) nameEqualsValue of
+          [name , value] -> setEnv (toString name) (toString value)
+          _              -> exitFailure
+        (progName : args) -> SP.callProcess (toString progName) (toString <$> args)
 
-  case result of
-    Right () -> pass
-    Left  e  -> case fromException e of
-      Just SE.ExitSuccess -> exitSuccess
-      _                   -> do
-        putStrLn $ displayException e
-        putStr "err"
+      handleError e = case fromException e of
+          Just SE.ExitSuccess -> exitSuccess
+          _                   -> do
+            putStrLn $ displayException e
+            putStr "err"
