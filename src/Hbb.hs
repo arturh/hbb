@@ -9,7 +9,7 @@ import qualified Data.Text              as T
 import qualified Data.Text.IO           as TIO
 import           Relude
 import qualified System.Directory       as SD
-import           System.Environment     (setEnv, unsetEnv)
+import           System.Environment     (getEnv, setEnv, unsetEnv)
 import qualified System.Exit            as SE
 import qualified System.IO              as SIO
 import qualified System.Process         as SP
@@ -46,6 +46,7 @@ sh = forever $ do
         ["set"  , nameEqualsValue] -> case T.split ('=' ==) nameEqualsValue of
           [name , value] -> setEnv (toString name) (toString value)
           _              -> exitFailure
+        ["view"  , name          ] -> (getEnv $ toString name) >>= putStrLn
         (progName : args) -> SP.callProcess (toString progName) (toString <$> args)
 
       handleError e = case fromException e of
