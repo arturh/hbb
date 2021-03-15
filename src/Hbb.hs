@@ -43,13 +43,7 @@ tail' :: Int -> Text -> IO ()
 tail' n file = do
   withFile (toString file) ReadMode $ \h -> do
     contents <- T.lines <$> TIO.hGetContents h
-    putText $ T.unlines $ lastN contents $ length contents
- where
-  lastN :: [Text] -> Int -> [Text]
-  lastN []     _        = []
-  lastN (l:ls) lsLength = case lsLength > n of
-    True  -> lastN ls (lsLength - 1)
-    False -> l : ls
+    putText $ T.unlines $ drop (length contents - n) contents
 
 
 yes :: [Text] -> IO ()
