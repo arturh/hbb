@@ -14,11 +14,15 @@ import qualified System.Process         as SP
 
 mainWithArgs :: Text -> [Text] -> IO ()
 mainWithArgs progName args = case (progName, args) of
-  ("cat"    , _              ) -> cat args
-  ("echo"   , "-n":args'     ) -> putText . unwords $ args'
-  ("echo"   , _              ) -> putTextLn . unwords $ args
-  ("false"  , _              ) -> exitFailure
-  ("sh"     , []             ) -> sh
+  ("cat"  , _                    ) -> cat args
+  ("echo" , "-n":args'           ) -> putText . unwords $ args'
+  ("echo" , _                    ) -> putTextLn . unwords $ args
+  ("false", _                    ) -> exitFailure
+  ("sh"   , []                   ) -> sh
+  ("tail" , [file]               ) -> tail' 10 file
+  ("tail" , ["-n", nAsText, file]) -> case readMaybe $ toString nAsText of
+    Just n  -> tail' n file
+    Nothing -> exitFailure
   ("true"   , _              ) -> exitSuccess
   ("wc"     , ["-c", file]   ) -> wcC file
   ("wc"     , ["-l", file]   ) -> wcL file
@@ -34,6 +38,19 @@ mainWithArgs progName args = case (progName, args) of
  where
   printHelp :: IO ()
   printHelp = putTextLn "hbb-exe false|true|yes|..."
+
+tail' :: Int -> Text -> IO ()
+tail' n file = do
+  withFile (toString file) ReadMode $ \h -> do
+    contents <- T.lines <$> TIO.hGetContents h
+    putText $ T.unlines $ lastN contents $ length contents
+ where
+  lastN :: [Text] -> Int -> [Text]
+  lastN []     _        = []
+  lastN (l:ls) lsLength = case lsLength > n of
+    True  -> lastN ls (lsLength - 1)
+    False -> l : ls
+
 
 yes :: [Text] -> IO ()
 yes args =
@@ -82,10 +99,10 @@ sh = forever $ do
       setEnv name value
       where [name, value] = T.split (== '=') nameEqualsValue
     (progName:args) -> do
-      eitherExceptionOrExitCode <-
+      exitCode <-
         SP.withCreateProcess (proc progName args) { SP.delegate_ctlc = True }
           $ \_ _ _ p -> SP.waitForProcess p
-      case eitherExceptionOrExitCode of
+      case exitCode of
         SE.ExitSuccess   -> pass
         SE.ExitFailure r -> putText $ show r
     [] -> pass
